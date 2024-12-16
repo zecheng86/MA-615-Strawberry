@@ -1,0 +1,149 @@
+---
+title: "Strawberry Data EDA"
+author: "Zecheng Li"
+output: 
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r}
+datacen <- read.csv("straw_cen_cleaned2.csv")
+datasur <- read.csv("straw_sur_cleaned2.csv")
+str(datasur)
+```
+
+```{r}
+unique1<- unique(datasur$Chemical_Name)
+unique2<- unique(datasur$Chemical_Code)
+ca_chemical <- subset(datasur, State != "California")
+ca_chemical1 <- subset(ca_chemical, !(Chemical_Name %in% c("NOT SPECIFIED", "TOTAL")))
+head(ca_chemical1)
+ca_chemical2 <- ca_chemical1[ca_chemical1$Year %in% 2018:2023, ]
+```
+
+```{r}
+library(tidyverse)
+ca_chemical3 <- ca_chemical2 %>%
+  group_by(Chemical_Use, Year) %>%
+  summarise(Total_Value = sum(Value, na.rm = TRUE)) %>%
+  ungroup()
+ggplot(ca_chemical3, aes(x = Chemical_Use, y = Total_Value, fill = as.factor(Year))) +
+  geom_col(position = "dodge") +  # 使用 geom_col 替代 geom_bar(stat = "identity")
+  labs(title = "Usage of Chemicals (CA, 2018-2023)",
+       x = "Chemical Use",
+       y = "Total Value",
+       fill = "Year") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 60, hjust = 1))
+```
+
+```{r}
+library(dplyr)
+library(ggplot2)
+ca_chemical_agg <- ca_chemical2 %>%
+  group_by(Chemical_Name, Year) %>%
+  summarise(Total_Value = sum(Value, na.rm = TRUE)) %>%
+  ungroup()
+tenchemicals <- function(data, year) {
+  data %>%
+    filter(Year == year) %>%
+    arrange(desc(Total_Value)) %>%
+    slice_head(n = 10)
+}
+
+top_10_2023 <- tenchemicals(ca_chemical_agg, 2023)
+top_10_2021 <- tenchemicals(ca_chemical_agg, 2021)
+
+print(top_10_2023)
+print(top_10_2021)
+
+top_10_all <- bind_rows(
+  top_10_2023 %>% mutate(Year = 2023),
+  top_10_2021 %>% mutate(Year = 2021)
+)
+
+ggplot(top_10_all, aes(x = reorder(Chemical_Name, -Total_Value), y = Total_Value, fill = as.factor(Year))) +
+  geom_col(position = "dodge") +
+  labs(title = "Top 10 Chemicals by Total Usage for 2021 and 2023",
+       x = "Chemical Name",
+       y = "Total Usage (Value)",
+       fill = "Year") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 60, hjust = 1))
+
+```
+
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+ca_chemical2_filtered <- ca_chemical2 %>%
+  filter(Chemical_Use == "INSECTICIDE")
+
+ca_chemical_agg1 <- ca_chemical2_filtered %>%
+  group_by(Chemical_Name, Year) %>%
+  summarise(Total_Value = sum(Value, na.rm = TRUE)) %>%
+  ungroup()
+
+get_top_10 <- function(data, year) {
+  data %>%
+    filter(Year == year) %>%
+    arrange(desc(Total_Value)) %>%
+    slice_head(n = 10)
+}
+
+top_10_2023_new <- get_top_10(ca_chemical_agg1, 2023)
+top_10_2021_new <- get_top_10(ca_chemical_agg1, 2021)
+
+print(top_10_2023_new)
+print(top_10_2021_new)
+
+top_10_all_new <- bind_rows(
+  top_10_2023_new %>% mutate(Year = 2023),
+  top_10_2021_new %>% mutate(Year = 2021)
+)
+
+ggplot(top_10_all_new, aes(x = reorder(Chemical_Name, -Total_Value), y = Total_Value, fill = as.factor(Year))) +
+  geom_col(position = "dodge") +
+  labs(title = "Top 10 Chemicals by Total Usage for 2021 and 2023",
+       x = "Chemical Name",
+       y = "Total Usage (Value)",
+       fill = "Year") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 60, hjust = 1))
+
+ca_chemical_total <- ca_chemical2 %>%
+  group_by(Year) %>%
+  summarise(Total_Value = sum(Value, na.rm = TRUE))
+
+ggplot(ca_chemical_total, aes(x = Year, y = Total_Value)) +
+  geom_line(color = "blue", size = 1) +
+  labs(title = "Total Chemical Usage by Year (CA, 2018-2023)",
+       x = "Year",
+       y = "Total Usage (Value)") +
+  theme_minimal()
+```
+
+
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
